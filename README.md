@@ -28,14 +28,15 @@ Utilizing PostgreSQL, MongoDB and Neo4j to manage course data and handle quering
    ```
 
 ## Accessing the databases
-  - PostgreSQL
-     > Download [PostgreSQL](https://www.postgresql.org/download/)
-  - MongoDB
-     > Download [MongoDB Compass](https://www.mongodb.com/try/download/compass)
-     1. Add connection
-        - url: mongodb://localhost:27017/
-        - Name: CS440 (you can name it to what you desire)
-     2. Hit save and connect
-  - Neo4j
-    1. You can access Neo4j via local broswer: http://localhost:7474/browser/
+### PostgreSQL
+> Download [PostgreSQL](https://www.postgresql.org/download/)
+### MongoDB
+> Download [MongoDB Compass](https://www.mongodb.com/try/download/compass)
+1. Add connection
+   - url: mongodb://localhost:27017/
+   - Name: CS440 (you can name it to what you desire)
+2. Hit save and connect
+
+### Neo4j
+1. You can access Neo4j via local broswer: http://localhost:7474/browser/
 
