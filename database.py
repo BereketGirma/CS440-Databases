@@ -2,6 +2,7 @@ import csv
 import pymongo
 from neo4j import GraphDatabase
 import psycopg2
+import re
 
 # Setup PostgreSQL connection
 postgre_conn = psycopg2.connect(
@@ -43,6 +44,11 @@ def parse_csv(file_path):
     print("Finished parsing csv data!")
     return data
 
+def drop_postgre_table():
+    postgre_cursor.execute("DROP TABLE IF EXISTS courses;")
+    postgre_conn.commit()
+    print("Dropped 'courses' table in PostgreSQL.")
+    
 def create_postgre_table():
     print("Creating table in postgresql...")
     create_table_query = """
@@ -50,7 +56,8 @@ def create_postgre_table():
             ProgID VARCHAR(50),
             ProgramName VARCHAR(100),
             Degree VARCHAR(100),
-            TotalCredits INT
+            TotalCredits INT,
+            CourseNumber VARCHAR(20)
         )
     """
     
@@ -61,17 +68,21 @@ def create_postgre_table():
 
 # Insert into PostgreSQL
 def insert_into_postgre(data):
-    
+    drop_postgre_table()
     create_postgre_table()
     for row in data:
         query = """
         INSERT INTO courses (
-            ProgID, ProgramName, Degree, TotalCredits
+            ProgID, ProgramName, Degree, TotalCredits, CourseNumber
         )
-        VALUES (%s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s)
         """
         cursor_data = (
-            row['ProgID'], row['ProgramName'], row['Degree'], row['TotalCredits']
+            row['ProgID'], 
+            row['ProgramName'], 
+            row['Degree'], 
+            row['TotalCredits'],
+            row['CourseNumber']
         )
         postgre_cursor.execute(query, cursor_data)
         postgre_conn.commit()
@@ -95,6 +106,7 @@ def insert_into_mongodb(data):
         )
         
         course_data = {
+            "ProgID": row['ProgID'],
             "CourseNumber": row['CourseNumber'],
             "Course": row['Course'],
             "Title": row['Title'],
@@ -111,49 +123,38 @@ def insert_into_mongodb(data):
         )
     print("Added data into MongoDB!")
 
+
 # Insert into Neo4j
 def insert_into_neo4j(data):
     for row in data:
+        # Merge Program and Course nodes, set course properties including prereq/coreq text
         query = """
-        MERGE (p:Program {ProgID: $progID, ProgramName: $programName, Degree: $degree})
-        MERGE (c:Course {CourseNumber: $courseNumber, Title: $title, Credits: $credits})
+        MERGE (p:Program {ProgID: $progID})
+        SET p.ProgramName = $programName,
+            p.Degree = $degree
+
+        MERGE (c:Course {CourseNumber: $courseNumber})
+        SET c.Title = $title,
+            c.Credits = $credits,
+            c.PreReqText = $preReq,
+            c.CoReqText = $coReq
+
         MERGE (p)-[:REQUIRES]->(c)
         """
-        main_params = {
+        
+        params = {
             "progID": row['ProgID'],
             "programName": row['ProgramName'],
             "degree": row['Degree'],
             "courseNumber": row['CourseNumber'],
             "title": row['Title'],
-            "credits": row['Credits']
+            "credits": row['Credits'],
+            "preReq": row['PreReq'],
+            "coReq": row['CoReq']
         }
         
-        neo4j_session.run(query, main_params)
-        
-        if row['PreReq']:
-            query = """
-                MATCH (c1:Course {CourseNumber: $courseNumber}), (c2:Course {CourseNumber: $preReq})
-                MERGE (c1)-[:PRE_REQUISITE]->(c2)
-            """
-            
-            params = {
-                "courseNumber": row['CourseNumber'],
-                "preReq": row['PreReq'],
-            }
-            neo4j_session.run(query, params)
-        
-        if row['CoReq']:
-            query = """
-                MATCH (c1:Course {CourseNumber: $courseNumber}), (c2:Course {CourseNumber: $coReq})
-                MERGE (c1)-[:CO_REQUISITE]->(c2)
-            """
-            
-            params = {
-                "courseNumber": row['CourseNumber'],
-                "coReq": row['CoReq'],
-            }
-            neo4j_session.run(query, params)
-        
+        neo4j_session.run(query, params)
+    
     print("Added data into Neo4j!")
 
 # Main function to execute the inserts
