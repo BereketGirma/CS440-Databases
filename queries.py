@@ -52,7 +52,7 @@ def query_1(prog_id):
     print("\n--- Query 1: Course details ---")
     print(f"\nRunning Unified Query 1 for ProgID: {prog_id}")
 
-    # 1. PostgreSQL: Get Program Information
+    # Step 1. PostgreSQL: Get Program Information
     pg_query = "SELECT ProgramName, Degree FROM courses WHERE ProgID = %s"
     postgre_cursor.execute(pg_query, (prog_id,))
     pg_result = postgre_cursor.fetchone()
@@ -64,7 +64,7 @@ def query_1(prog_id):
     program_name, degree = pg_result
     print(f"\nPostgreSQL - Program Info:\nProgram Name: {program_name}, Degree: {degree}")
 
-    # 2. MongoDB: Get course numbers associated with the program
+    # Step 2. MongoDB: Get course numbers associated with the program
     mongo_courses = list(courses_collection.find({"ProgID": prog_id}, {
         "_id": 0, "CourseNumber": 1, "Title": 1, "Credits": 1
     }))
@@ -76,7 +76,7 @@ def query_1(prog_id):
         for course in mongo_courses:
             print(course)
 
-    # 3. Neo4j: Validate or extend course information from relationships
+    # Step 3. Neo4j: Validate or extend course information from relationships
     neo4j_query = """
     MATCH (p:Program {ProgID: $prog_id})-[:REQUIRES]->(c:Course)
     RETURN c.CourseNumber AS CourseNumber, c.Title AS Title, c.Credits AS Credits
@@ -182,13 +182,13 @@ def query_4():
     print("\n--- Query 4: Integrate PostgreSQL, MongoDB, and Neo4j ---")
     prog_id = "201749219"
 
-    # PostgreSQL: get program name
+    # Step 1. PostgreSQL: get program name
     postgre_cursor.execute("SELECT ProgramName FROM courses WHERE ProgID = %s LIMIT 1", (prog_id,))
     result = postgre_cursor.fetchone()
     program_name = result[0] if result else "Unknown Program"
     print(f"Program: {program_name} (ProgID: {prog_id})")
 
-    # MongoDB: get up to 10 course documents for the program
+    # Step 2. MongoDB: get up to 10 course documents for the program
     course_docs = list(courses_collection.find(
         {"ProgID": prog_id},
         {"CourseNumber": 1, "Title": 1, "Credits": 1}
@@ -206,7 +206,7 @@ def query_4():
         title = course.get("Title", "No Title")
         credits = float(course.get("Credits", 0))
 
-        # Neo4j: fetch prereq/coreq text by CourseNumber
+        # Step 3. Neo4j: fetch prereq/coreq text by CourseNumber
         neo4j_result = neo4j_session.run(
             "MATCH (c:Course {CourseNumber: $courseNumber}) RETURN c.PreReqText AS prereq, c.CoReqText AS coreq",
             {"courseNumber": course_number}
